@@ -12,26 +12,51 @@ def matplotlib_defaults(font='montserrat'):
         font_manager.fontManager.addfont(font_file)
 
     rcParams.update({
-                        'font.family': font,
-                        'font.size': 20,
-                        'axes.labelsize': 18,
-                        'xtick.labelsize': 15,
-                        'ytick.labelsize': 15,
+                        'figure.dpi': 300,             # default for high quality
+                        'savefig.bbox': 'tight',       # tight, standard
+                        'savefig.transparent': True,
+                        'font.family': 'sans-serif',
+                        'font.sans-serif': font,
+                        'mathtext.fontset': 'custom',
+                        'mathtext.rm': font,
+                        'font.size': 12,
+                        'axes.labelsize': 12,          # MDPI uses 10pt font
+                        'xtick.labelsize': 10,          # make tick labels slightly smaller
+                        'ytick.labelsize': 10,
+                        'axes.titlesize': 15,          # make title slightly larger
                         'xtick.major.size': 7,
-                        'xtick.major.width': 1.5,
-                        'ytick.major.width': 1.5,
+                        'xtick.major.width': 0.8,
+                        'ytick.major.width': 0.8,
                         'ytick.major.size': 7,
                         'xtick.minor.visible': True,
                         'ytick.minor.visible': True,
                         'xtick.minor.size': 3,
                         'ytick.minor.size': 3,
-                        'xtick.minor.width': 0.75,
-                        'ytick.minor.width': 0.75,
+                        'xtick.minor.width': 0.5,
+                        'ytick.minor.width': 0.5,
                         'axes.titleweight': 'bold',
-                        'axes.titlesize': 20,
                         'axes.prop_cycle': cycler('color', ['#3cd184', '#f97171', '#1e81b0', '#66beb2', '#f99192', '#8ad6cc', '#3d6647', '#000080']),
                         'image.cmap': 'plasma'
                     })    
+
+figsizes = {
+    "default" : (4,3),
+    "wide" : (7, 3),
+}
+
+
+# matplotlib_defaults(font='montserrat')
+
+# # Create a simple plot with LaTeX text
+# import matplotlib.pyplot as plt
+
+# plt.figure()
+# plt.plot([0, 1], [0, 1])
+# plt.xlabel("PM")
+# plt.ylabel(r"$\text{PM}_{2.5}$ $\left( \mu \text{g}\cdot\text{m}^{-3} \right)$")
+
+# # Show the plot
+# plt.show()
 
 
 # matplotlib_defaults(font='palatino')
