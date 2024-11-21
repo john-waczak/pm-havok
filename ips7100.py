@@ -62,20 +62,20 @@ def get_conversion_factors(df):
         return [A, B, C, D, E, F, G]
 
 
-def get_dry_bins(RH, kappa=0.62, eff=0.35, D_wet=np.array([0.0, 0.1, 0.3, 0.5, 1.0, 2.5, 5.0, 10.0])):
-    rh = 99.9 if RH == 100.0 else RH
+# def get_dry_bins(RH, kappa=0.62, eff=0.35, D_wet=np.array([0.0, 0.1, 0.3, 0.5, 1.0, 2.5, 5.0, 10.0])):
+#     rh = 99.9 if RH == 100.0 else RH
 
-    if rh >= eff:
-        return D_wet / ((1 + kappa * rh / (100.0 - rh))**(1/3))
-    else:
-        return D_wet
+#     if rh >= eff:
+#         return D_wet / ((1 + kappa * rh / (100.0 - rh))**(1/3))
+#     else:
+#         return D_wet
 
 
 
 def get_dry_bins(RH, kappa=0.62, eff=0.35):
     D_wet = np.tile(np.array(bin_edges), (len(RH), 1))
-    correction = RH
-    correction[rh == 100.0] = 99.99
+    correction = RH.copy()
+    correction[RH == 100.0] = 99.99
 
     # create mask of values above efflorescence point
     eff_mask = correction >= eff

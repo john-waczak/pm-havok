@@ -6,9 +6,9 @@ import os
 import matplotlib.dates as mdates
 from matplotlib.colors import LogNorm
 
-from matplotlib_defaults import matplotlib_defaults, figsizes
+from matplotlib_defaults import matplotlib_defaults, figsizes, mints_colors
 
-from ips7100 import pm_colors, pm_labels_units, pc_cols, pm_cols, bin_edges
+from ips7100 import pm_colors, pm_labels_units, pc_cols, pm_cols, bin_edges, correct_ips7100_for_humidity
 
 matplotlib_defaults(font='palatino')
 
@@ -37,7 +37,6 @@ df_bam.dateTime = pd.to_datetime(df_bam['dateTime']).dt.tz_localize('UTC')
 # convert to local timezone (CST)
 df.dateTime.dt.tz_convert('America/Chicago')
 df_bam.dateTime.dt.tz_convert('America/Chicago')
-
 
 
 df.describe()
@@ -124,10 +123,52 @@ cb.ax.minorticks_on()
 # ax.tick_params(axis='both', which='minor', width=0.75)
 
 plt.tight_layout()
-plt.show()
-
+plt.savefig(os.path.join(figpath, "2__heatmap.png"))
 
 
 # now we can perform the humidity correction
+correct_ips7100_for_humidity(df, kappa=0.62, eff=0.35, rh_col='humidity')
+
+df.humidity
+
+# plot the original vs the corrected PM values
+
+fig, axs = plt.subplots(2, 1, height_ratios=[1, 4], sharex=True, figsize=figsizes['wide'])
+plt.subplots_adjust(hspace=0.25)
+
+l_orig,  = axs[1].plot(df.dateTime, df.pm2_5, linewidth=0.8, label=r"Original")
+l_cor, = axs[1].plot(df.dateTime, df.pm2_5_cor, linewidth=0.8, label=r"Humidity Corrected")
+
+plt.legend(handles=[l_orig, l_cor], bbox_to_anchor=(0, 1.04, 1, 0.01), loc="center right", frameon=False, borderaxespad=0, ncol=3, fontsize=8)
+
+l_hum, = axs[0].plot(df.dateTime, df.humidity, linewidth=0.8, color=mints_colors[3])
+
+# turn on major/minor girds
+axs[0].grid(which='major', color='#DDDDDD', linewidth=0.8)
+axs[0].grid(which='minor', color='#DDDDDD', linewidth=0.5)
+axs[0].minorticks_on()
+axs[0].tick_params(axis='x', which='major', length=3)
+axs[0].tick_params(axis='x', which='minor', length=2)
+
+axs[1].grid(which='major', color='#DDDDDD', linewidth=0.8)
+axs[1].grid(which='minor', color='#DDDDDD', linewidth=0.5)
+axs[1].minorticks_on()
+
+# set axis limits and minor ticks
+axs[1].set_xlim(df.dateTime.iloc[0], df.dateTime.iloc[-1])
+axs[1].xaxis.set_major_formatter(mdates.DateFormatter("%m/%y"))
+axs[1].xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+axs[1].xaxis.set_minor_locator(mdates.DayLocator(interval=7))
+axs[1].set_ylim(-2, 102)
+axs[0].set_ylim(-1, 101)
+
+axs[1].set_xlabel("time (local)")
+axs[1].set_ylabel(r"$\text{PM}_{2.5}$ $\left(\mu \text{g} \cdot \text{m}^{-3} \right)$")
+axs[0].set_ylabel("RH (%)")
+
+plt.savefig(os.path.join(figpath, "3__pm-humidity-corrected.png"))
+
+plt.show()
+
 
 

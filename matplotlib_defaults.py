@@ -3,7 +3,7 @@ from matplotlib import rcParams
 from cycler import cycler
 
 # Set the font files
-def matplotlib_defaults(font='montserrat'):
+def matplotlib_defaults(font='montserrat', background_transparent=False):
 
     fonts_path = "./font-files"
     font_files = font_manager.findSystemFonts(fontpaths=fonts_path)
@@ -14,7 +14,7 @@ def matplotlib_defaults(font='montserrat'):
     rcParams.update({
                         'figure.dpi': 300,             # default for high quality
                         'savefig.bbox': 'tight',       # tight, standard
-                        'savefig.transparent': True,
+                        'savefig.transparent': background_transparent,
                         'font.family': 'sans-serif',
                         'font.sans-serif': font,
                         'mathtext.fontset': 'custom',
@@ -25,15 +25,15 @@ def matplotlib_defaults(font='montserrat'):
                         'ytick.labelsize': 10,
                         'axes.titlesize': 15,          # make title slightly larger
                         'xtick.major.size': 7,
-                        'xtick.major.width': 0.8,
-                        'ytick.major.width': 0.8,
+                        'xtick.major.width': 0.7,
+                        'ytick.major.width': 0.7,
                         'ytick.major.size': 7,
                         'xtick.minor.visible': True,
                         'ytick.minor.visible': True,
                         'xtick.minor.size': 3,
                         'ytick.minor.size': 3,
-                        'xtick.minor.width': 0.5,
-                        'ytick.minor.width': 0.5,
+                        'xtick.minor.width': 0.4,
+                        'ytick.minor.width': 0.4,
                         'axes.titleweight': 'bold',
                         'axes.prop_cycle': cycler('color', ['#3cd184', '#f97171', '#1e81b0', '#66beb2', '#f99192', '#8ad6cc', '#3d6647', '#000080']),
                         'image.cmap': 'plasma'
@@ -43,6 +43,17 @@ figsizes = {
     "default" : (4,3),
     "wide" : (7, 3),
 }
+
+mints_colors = [
+    '#3cd184',
+    '#f97171', 
+    '#1e81b0', 
+    '#66beb2', 
+    '#f99192', 
+    '#8ad6cc', 
+    '#3d6647', 
+    '#000080'
+]
 
 
 # matplotlib_defaults(font='montserrat')
