@@ -253,6 +253,12 @@ gdf = df.groupby('group')
 print(gdf.size())
 
 
+df_1 = df.iloc[gdf.indices[0]]
+
+z = df_1.pm2_5.values
+
+
+
 # loop over each df and create
 # 1. time series of pm
 # 2. hankel matrix
