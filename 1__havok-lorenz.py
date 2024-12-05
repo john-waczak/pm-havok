@@ -2,11 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from scipy.integrate import ode
+from scipy import stats
 import os 
 
 import matplotlib.dates as mdates
 from matplotlib.colors import LogNorm, LinearSegmentedColormap
-from matplotlib_defaults import matplotlib_defaults, figsizes, mints_colors
+from matplotlib_defaults import matplotlib_defaults, figsizes, mints_colors, colored_line
 from havok import build_hankel, sHAVOK, make_expM, eval_havok
 
 matplotlib_defaults(font='palatino')
@@ -114,14 +115,6 @@ ts
 z_x, z_pred, t_x, U, s, V, A, B, fvals = eval_havok(z, ts, n_embedding, r_model, n_control)
 
 
-plt.clf()
-plt.figure()
-plt.plot(t_x, z_x)
-plt.plot(t_x, z_pred)
-plt.xlim(t_x[0], t_x[10000])
-plt.show()
-
-
 
 # construct Hankel matrix
 # visualize the extracted matrices
@@ -153,8 +146,149 @@ cbar_ax = fig.add_axes([0.85, 0.15, 0.03, 0.7])
 cbar_ax.set_xticks(range(vmin,vmax, 5))
 cb = fig.colorbar(im_A, cax=cbar_ax, extend='both')
 
+# plt.show()
+
 plt.savefig(os.path.join(figpath, "2__A-B-operator-heatmap.png"))
 plt.close()
+
+
+
+# 3 plot the reconstruction
+fig, ax = plt.subplots(figsize=figsizes['wide'])
+
+l_orig, = ax.plot(t_x, z_x, label="True")
+l_havok, = ax.plot(t_x, z_pred, label="HAVOK")
+ax.set_xlim(t_x[0], 50)
+ax.set_xscale('linear')
+
+ax.set_xlabel('t')
+ax.set_ylabel('x(t)')
+ax.grid(which='major', color='#DDDDDD', linewidth=0.8)
+ax.grid(which='minor', color='#DDDDDD', linewidth=0.5)
+ax.minorticks_on()
+
+# add legend on top of plot
+plt.legend(handles=[l_orig, l_havok], bbox_to_anchor=(0, 1.015, 1, 0.15), loc="upper center", frameon=False, borderaxespad=0, ncol=2)
+
+plt.tight_layout()
+
+plt.savefig(os.path.join(figpath, "3__havok-reconstruction.png"))
+plt.clf()
+
+
+# Plot the eigenmodes from the U matrix
+fig, ax = plt.subplots(figsize=figsizes['default'])
+
+ls1 = []
+ls2 = []
+lr = []
+for i in range(r):
+    if i < 3 :
+        l, = ax.plot(np.arange(n_embedding) * dt, U[:,i], color=mints_colors[2], linewidth=1)
+        ls1.append(l)
+    elif i >= 3 and i < r-1:
+        l, = ax.plot(np.arange(n_embedding) * dt, U[:,i], color='tab:gray', alpha=0.5, linewidth=0.5) # gray
+        ls2.append(l)
+    else:
+        l, = ax.plot(np.arange(n_embedding) * dt, U[:,i], color=mints_colors[1], linewidth=1)
+        lr.append(l)
+        
+        
+plt.legend([*ls1, ls2[0], lr[0]], [r"$u_1$", r"$u_2$", r"$u_3$", r"$\vdots$", r"$u_r$"], bbox_to_anchor=(1.02, 0.4), loc="center left", frameon=False, borderaxespad=0, fontsize=10, handletextpad=0.2, handlelength=0.8)
+
+ax.set_xlim(0 - 0.1*dt, n_embedding*dt + 0.1*dt)
+ax.set_xlabel('t')
+ax.set_title('Eigenmodes')
+ax.grid(which='major', color='#DDDDDD', linewidth=0.8)
+ax.grid(which='minor', color='#DDDDDD', linewidth=0.5)
+ax.minorticks_on()
+
+plt.tight_layout()
+
+plt.savefig(os.path.join(figpath, "4__U-eigenmodes.png"))
+plt.clf()
+
+
+
+# plot with forcing
+thresh = 5e-6
+forcing_active = np.zeros(fvals.shape[0]) #, dtype=bool)
+idx_high = np.where(fvals[:,0] ** 2 >= thresh)[0]
+win = 500 # max window size to consider forcing active
+forcing_active[idx_high] = 1.0
+
+sum(forcing_active)
+
+for i in range(1, len(idx_high)):
+    if idx_high[i] - idx_high[i-1] <= win:
+        forcing_active[idx_high[i-1]:idx_high[i]] = 1.0
+
+
+sum(forcing_active)
+
+on_off = LinearSegmentedColormap.from_list('list', [mints_colors[0], mints_colors[1]], N=2)
+
+lcolor = [mints_colors[1] if fa == 1 else mints_colors[0] for fa in forcing_active ]
+
+
+plt.close()
+fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=figsizes['wide'], sharex=True)
+
+ls = colored_line(t_x, z_x, forcing_active, ax=axs[0], cmap=on_off, linewidth=0.75, alpha=1)
+ls = colored_line(t_x, fvals[:,0] ** 2, forcing_active, axs[1], cmap=on_off, linewidth=0.75, alpha=1)
+
+axs[0].set_ylim(-20, 20)
+axs[1].set_ylim(-0.00001, 0.0006)
+axs[1].set_xlim(t_x[0], 50)
+
+axs[0].grid(which='major', color='#DDDDDD', linewidth=0.8)
+axs[0].grid(which='minor', color='#DDDDDD', linewidth=0.5)
+axs[0].minorticks_on()
+
+axs[1].grid(which='major', color='#DDDDDD', linewidth=0.8)
+axs[1].grid(which='minor', color='#DDDDDD', linewidth=0.5)
+axs[1].minorticks_on()
+
+axs[0].tick_params(axis='x', which='both', length=0)
+
+axs[0].set_ylabel(r'$x(t)$')
+axs[1].set_ylabel(r'$v_r^2$')
+axs[1].set_xlabel('time')
+
+plt.tight_layout()
+plt.subplots_adjust(hspace=0.1)
+
+plt.savefig(os.path.join(figpath, '5__timeseries-w-forcing.png'))
+plt.clf()
+
+
+
+# plot the KDE
+kde = stats.gaussian_kde(fvals[:,0])
+vs = np.linspace(-0.1, 0.1, 1000)
+
+fig, ax = plt.subplots(figsize=figsizes['default'])
+l1, = ax.plot(vs, kde(vs), color=mints_colors[2], label="Estimated PDF")
+l2, = ax.plot(vs, stats.norm.pdf(vs, np.mean(fvals[:,0]), np.std(fvals[:,0])), color=mints_colors[1], linestyle='--', label="Gasusian")
+ax.set_yscale('log')
+ax.set_ylim(1e-1, 1e3)
+ax.set_xlim(-0.02, 0.02)
+ax.set_xlabel(r'$v_r$')
+ax.set_title('Forcing Statistics')
+
+plt.legend(handles=[l1, l2], bbox_to_anchor=(1.04, 0.4), loc="center left", frameon=False, borderaxespad=0, fontsize=10, handletextpad=0.2, handlelength=1.5)
+
+ax.grid(which='major', color='#DDDDDD', linewidth=0.8)
+ax.grid(which='minor', color='#DDDDDD', linewidth=0.5)
+ax.minorticks_on()
+
+plt.tight_layout()
+
+plt.savefig(os.path.join(figpath, '6__forcing-statistics.png'))
+plt.clf()
+
+
+
 
 
 
