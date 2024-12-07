@@ -14,9 +14,9 @@ matplotlib_defaults(font='palatino')
 
 
 # set up plotting paths
-figpath = "./figures/0__humidity-correction"
-if not os.path.exists(figpath):
-    os.makedirs(figpath)
+outpath = "./output/0__humidity-correction"
+if not os.path.exists(outpath):
+    os.makedirs(outpath)
 
 # set up data paths
 data_path = "./data"
@@ -78,7 +78,7 @@ plt.tight_layout()
 
 # plt.show()
 
-plt.savefig(os.path.join(figpath, "1__pm-timeseries.png"))
+plt.savefig(os.path.join(outpath, "1__pm-timeseries.png"))
 
 
 
@@ -122,7 +122,7 @@ cb.ax.minorticks_on()
 # ax.tick_params(axis='both', which='minor', width=0.75)
 
 plt.tight_layout()
-plt.savefig(os.path.join(figpath, "2__heatmap.png"))
+plt.savefig(os.path.join(outpath, "2__heatmap.png"))
 
 
 # now we can perform the humidity correction
@@ -165,7 +165,7 @@ axs[1].set_xlabel("time (local)")
 axs[1].set_ylabel(r"$\text{PM}_{2.5}$ $\left(\mu \text{g} \cdot \text{m}^{-3} \right)$")
 axs[0].set_ylabel("RH (%)")
 
-plt.savefig(os.path.join(figpath, "3__pm-humidity-corrected.png"))
+plt.savefig(os.path.join(outpath, "3__pm-humidity-corrected.png"))
 
 # plt.show()
 
@@ -218,7 +218,7 @@ ax.set_xlabel(r"BAM  $\text{PM}_{2.5}$ ($\mu \text{g}\cdot\text{m}^{-3}$)")
 ax.set_ylabel(r"IPS7100  $\text{PM}_{2.5}$ ($\mu \text{g}\cdot\text{m}^{-3}$)")
 plt.tight_layout()
 
-plt.savefig(os.path.join(figpath, "4__hc-bam-scatter.png"))
+plt.savefig(os.path.join(outpath, "4__hc-bam-scatter.png"))
 
 # plt.show()
 

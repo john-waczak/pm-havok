@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.linalg import expm
 from scipy.signal import lsim
+from tqdm import tqdm
 
 # rows is the embedding size
 def build_hankel(z, rows):
@@ -120,28 +121,25 @@ def eval_havok(z, ts, n_embedding, r_model, n_control):
     r = r_model + n_control
 
     # construct Hankel matrix
-    print("...building Hankel matrix")
+    #print("...building Hankel matrix")
     H = build_hankel(z, n_embedding)
 
     # get true values of time series
     # after forming Hankel matrix
-    dt = ts[2] - ts[1]
+    dt = ts[1] - ts[0]
     z_x = H[-1, :]
     t_x = np.arange(ts[n_embedding], ts[n_embedding] + dt*len(z_x),step=dt)
 
     # compute sHAVOK decomp
     # M, U, s, _ = sHAVOK(H, dt, r)
-    print("...fitting HAVOK model")
-    M, U, s, _ = HAVOK(H, dt, r)
+    #print("...fitting HAVOK model")
+    M, U, s, _ = sHAVOK(H, dt, r)
 
     # using our H, U, and s, reconstruct the dembeddings
     # V = H.T @ (U * (1 / s)[np.newaxis, :])
     V = H.T @ U @ np.diag(1.0 / s)
 
     # pick out the A and B matrices
-    M.shape
-
-    
     A = M[:r_model, :r_model]
     B = M[:r_model, r_model:r]
 
@@ -159,7 +157,7 @@ def eval_havok(z, ts, n_embedding, r_model, n_control):
     Vout[0,:] = V[0, :r_model]
 
     # time-evolve the system
-    print(f"...integrating from t={t_x[0]:.3f} to t={t_x[-1]:.3f}")
+    #print(f"...integrating from t={t_x[0]:.3f} to t={t_x[-1]:.3f}")
     for i in range(Vout.shape[0]-1):
         Vout[i+1,:] = expA @ Vout[i,:] + expB @ fvals[i,:]
 
@@ -170,8 +168,118 @@ def eval_havok(z, ts, n_embedding, r_model, n_control):
     return z_x, z_pred, t_x, U, s, Vout, A, B, fvals
 
 
-    
-# n_embedding = 201
-# r_model = 14
-# n_control = 1
-# r = r_model + n_control
+
+
+
+def eval_havok_multi(zs, ts, n_embedding, r_model, n_control):
+    r = r_model + n_control
+
+    # construct Hankel matrix
+    # print("...building Hankel matrices")
+    Hs = []
+    dts = []
+    zs_x = []
+    ts_x = []
+    # for i in tqdm(range(len(zs))):
+    for i in range(len(zs)):
+        H = build_hankel(zs[i], n_embedding)
+        Hs.append(H)
+
+        dt = ts[i][1] - ts[i][0]
+        dts.append(dt)
+        
+        z_x = H[-1,:]
+        # t_x = np.arange(ts[i][n_embedding], ts[i][n_embedding] + dt*len(z_x), step=dt)
+        t_x = ts[i][n_embedding-1:]
+
+        zs_x.append(z_x)
+        ts_x.append(t_x)
+
+    H = np.hstack(Hs)        
+
+    assert np.allclose(dts, dts[0])
+    dt = dts[0]
+
+    # compute sHAVOK decomp
+    # print("...fitting HAVOK model")
+    M, U, s, _ = sHAVOK(H, dt, r)
+
+    # using our H, U, and s, reconstruct the dembeddings
+    Vs = [H.T @ U @ np.diag(1.0 / s) for H in Hs]
+
+    # pick out forcing values
+    fvals = [V[:, r_model:r] for V in Vs]
+
+          # set up predictded embedding matrices
+    Vs_out = [np.zeros((V.shape[0], r_model)) for V in Vs]
+
+    # set initial condition
+    for i in range(len(Vs)):
+        Vs_out[i][0,:] = Vs[i][0,:r_model]
+
+
+    # pick out the A and B matrices
+    A = M[:r_model, :r_model]
+    B = M[:r_model, r_model:r]
+
+
+    # construct exp matrices for integration
+    expA, expB = make_expM(A, B, dt, r_model, n_control)
+
+
+    # time-evolve the system
+    zs_pred = []
+
+    # for k in tqdm(range(len(ts_x))):
+    for k in range(len(ts_x)):
+        # perform integration
+        for i in range(Vs_out[k].shape[0]-1):
+            Vs_out[k][i+1,:] = expA @ Vs_out[k][i,:] + expB @ fvals[k][i,:]
+
+        H_pred = U[:, :r_model] @ np.diag(s[:r_model]) @ Vs_out[k].T
+        zs_pred.append(H_pred[-1,:])
+
+
+    return zs_x, zs_pred, ts_x, U, s, Vs_out, A, B, fvals
+
+
+
+
+# Assuming you already have a model, integrate the existing
+# model for new time series points (t, z(t))
+# this is useful for checking performance on a test set
+def integrate_havok(z, t, n_embedding, r_model, n_control, A, B, U, s):
+    r = r_model + n_control
+
+    H = build_hankel(z, n_embedding)
+    V = H.T @ U @ np.diag(1.0 / s)
+
+    # pick out forcing values
+    fvals = V[:, r_model:r]
+
+    # compute dt
+    dt = t[1] - t[0]
+    z_x = H[-1, :]
+    t_x = t[n_embedding-1:]
+
+
+    # construct exp matrices for integration
+    expA, expB = make_expM(A, B, dt, r_model, n_control)
+
+    # set up outgoing arrays
+    Vout = np.zeros((V.shape[0], r_model))
+
+    # set initial condition
+    Vout[0,:] = V[0, :r_model]
+
+    # time-evolve the system
+    # print(f"...integrating from t={t_x[0]:.3f} to t={t_x[-1]:.3f}")
+    for i in range(Vout.shape[0]-1):
+        Vout[i+1,:] = expA @ Vout[i,:] + expB @ fvals[i,:]
+
+    # reconstruct Hankel matrix and get time series
+    H_pred = U[:, :r_model] @ np.diag(s[:r_model]) @ Vout.T    
+    z_pred = H_pred[-1,:]
+
+    return z_x, z_pred, t_x
+

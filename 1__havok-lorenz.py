@@ -8,15 +8,15 @@ import os
 import matplotlib.dates as mdates
 from matplotlib.colors import LogNorm, LinearSegmentedColormap
 from matplotlib_defaults import matplotlib_defaults, figsizes, mints_colors, colored_line
-from havok import build_hankel, sHAVOK, make_expM, eval_havok
+from havok import build_hankel, sHAVOK, make_expM, eval_havok, eval_havok_multi, integrate_havok
 
 matplotlib_defaults(font='palatino')
 
 
 # set up plotting paths
-figpath = "./figures/1__havok-lorenz"
-if not os.path.exists(figpath):
-    os.makedirs(figpath)
+outpath = "./output/1__havok-lorenz"
+if not os.path.exists(outpath):
+    os.makedirs(outpath)
 
 
 
@@ -36,29 +36,29 @@ def lorenz(t, u, du, params):
 params = [10.0, 28.0, 8/3]
 u0 = [-8.0, 8.0, 27.0]
 dt = 0.001
-ts = np.arange(0, 200 + dt, dt)
-sol = np.empty((len(u0), len(ts)))
+t = np.arange(0, 200 + dt, dt)
+sol = np.empty((len(u0), len(t)))
 
 sol[:,0] = u0
 
 mdl = ode(lorenz).set_integrator('dopri5')
-mdl.set_initial_value(u0, ts[0])
+mdl.set_initial_value(u0, t[0])
 mdl.set_f_params(du, params)
-for i, t in enumerate(ts):
+for i, t_i in enumerate(t):
     if i == 0:
         continue
-    mdl.integrate(t)
+    mdl.integrate(t_i)
     sol[:,i] = mdl.y
 
 
 plt.clf()
 fig, axs = plt.subplots(3, 1, figsize=figsizes['wide'], sharex=True)
 
-axs[0].plot(ts, sol[0,:], color=mints_colors[0], linewidth=1)
-axs[1].plot(ts, sol[1,:], color=mints_colors[1], linewidth=1)
-axs[2].plot(ts, sol[2,:], color=mints_colors[2], linewidth=1)
+axs[0].plot(t, sol[0,:], color=mints_colors[0], linewidth=1)
+axs[1].plot(t, sol[1,:], color=mints_colors[1], linewidth=1)
+axs[2].plot(t, sol[2,:], color=mints_colors[2], linewidth=1)
 
-axs[2].set_xlim(ts[0], ts[-1])
+axs[2].set_xlim(t[0], t[-1])
 
 axs[0].set_ylabel('x')
 axs[1].set_ylabel('y')
@@ -82,12 +82,12 @@ axs[2].set_xscale('linear')
 plt.tight_layout()
 plt.subplots_adjust(hspace=0.25)
 
-plt.savefig(os.path.join(figpath, "1__lorenz-xyz-timeseries.png"))
+plt.savefig(os.path.join(outpath, "1__lorenz-xyz-timeseries.png"))
 plt.close()
 
 
 # 2: Visualize the attractor
-L = ts < 50.0
+L = t < 50.0
 
 plt.clf()
 fig, ax = plt.subplots(figsize=figsizes['default'], subplot_kw={'projection':'3d'})
@@ -95,7 +95,7 @@ ax.plot3D(sol[0,L], sol[1,L], sol[2,L], linewidth=1, color='k', alpha=0.65)
 ax.set_axis_off()
 ax.view_init(elev=30, azim=-35)
 
-plt.savefig(os.path.join(figpath, "1b_lorenz-attractor.png"))
+plt.savefig(os.path.join(outpath, "1b_lorenz-attractor.png"))
 plt.close()
 
 
@@ -108,11 +108,10 @@ r = r_model + n_control
 
 # pick out the time series and the times
 z = sol[0,:]
-ts
 
 
 # compute HAVOK decomposition
-z_x, z_pred, t_x, U, s, V, A, B, fvals = eval_havok(z, ts, n_embedding, r_model, n_control)
+z_x, z_pred, t_x, U, s, V, A, B, fvals = eval_havok(z, t, n_embedding, r_model, n_control)
 
 
 
@@ -148,7 +147,7 @@ cb = fig.colorbar(im_A, cax=cbar_ax, extend='both')
 
 # plt.show()
 
-plt.savefig(os.path.join(figpath, "2__A-B-operator-heatmap.png"))
+plt.savefig(os.path.join(outpath, "2__A-B-operator-heatmap.png"))
 plt.close()
 
 
@@ -172,7 +171,7 @@ plt.legend(handles=[l_orig, l_havok], bbox_to_anchor=(0, 1.015, 1, 0.15), loc="u
 
 plt.tight_layout()
 
-plt.savefig(os.path.join(figpath, "3__havok-reconstruction.png"))
+plt.savefig(os.path.join(outpath, "3__havok-reconstruction.png"))
 plt.clf()
 
 
@@ -205,7 +204,7 @@ ax.minorticks_on()
 
 plt.tight_layout()
 
-plt.savefig(os.path.join(figpath, "4__U-eigenmodes.png"))
+plt.savefig(os.path.join(outpath, "4__U-eigenmodes.png"))
 plt.clf()
 
 
@@ -258,7 +257,7 @@ axs[1].set_xlabel('time')
 plt.tight_layout()
 plt.subplots_adjust(hspace=0.1)
 
-plt.savefig(os.path.join(figpath, '5__timeseries-w-forcing.png'))
+plt.savefig(os.path.join(outpath, '5__timeseries-w-forcing.png'))
 plt.clf()
 
 
@@ -284,10 +283,94 @@ ax.minorticks_on()
 
 plt.tight_layout()
 
-plt.savefig(os.path.join(figpath, '6__forcing-statistics.png'))
+plt.savefig(os.path.join(outpath, '6__forcing-statistics.png'))
 plt.clf()
 
 
+
+# test the integrate funtion
+# to make sure it works as expected
+# z_test, z_pred, t_test = integrate_havok(z[1000:5000], t[1000:5000], n_embedding, r_model, n_control, A, B, U, s)
+
+# plt.figure()
+# plt.plot(t_test, z_test)
+# plt.plot(t_test, z_pred)
+# plt.show()
+
+
+
+
+
+# Now let's do it for multiple time series
+
+# split the time series into chunks:
+N = 5000
+skip = 100
+zs = [z[i:i+N] for i in range(0, len(z) - N + 1, N + skip)]
+ts = [t[i:i+N] for i in range(0, len(t) - N + 1, N + skip)]
+
+# visualize the disjoint time series
+fig, ax = plt.subplots(figsize=figsizes['wide'])
+
+ax.set_xscale('linear')
+for i in range(len(zs)):
+    ax.plot(ts[i], zs[i], linewidth=1, color=mints_colors[2])
+
+ax.set_xlabel("t")    
+ax.set_ylabel("x(t)")
+
+ax.grid(which='major', color='#DDDDDD', linewidth=0.8)
+ax.grid(which='minor', color='#DDDDDD', linewidth=0.5)
+ax.minorticks_on()
+
+ax.set_xlim(ts[0][0], 50)
+plt.tight_layout()
+ax.set_xscale('linear')
+
+plt.savefig(os.path.join(outpath, "7__timeseries-disjoint.png"))
+plt.clf()
+
+
+# Now let's do the HAVOK bit
+zs_x, zs_pred, ts_x, U, s, Vs_out, A, B, fvals = eval_havok_multi(zs, ts, n_embedding, r_model, n_control)
+
+
+set([len(z) for z in zs_x])
+
+set([len(t) for t in ts_x])
+
+
+
+# visualize the disjoint time series
+fig, ax = plt.subplots(figsize=figsizes['wide'])
+
+ax.set_xscale('linear')
+ls = []
+for i in range(len(zs_x)):
+    l1, = ax.plot(ts_x[i], zs_x[i], linewidth=1, color=mints_colors[2])
+    l2, = ax.plot(ts_x[i], zs_pred[i], linewidth=1, color=mints_colors[1])
+
+    if i == 0 :
+        ls.append(l1)
+        ls.append(l2)
+
+# add legend on top of plot
+plt.legend(ls, ["Original", "HAVOK"], bbox_to_anchor=(0, 1.015, 1, 0.15), loc="upper center", frameon=False, borderaxespad=0, ncol=2)
+
+
+ax.set_xlabel("t")    
+ax.set_ylabel("x(t)")
+
+ax.grid(which='major', color='#DDDDDD', linewidth=0.8)
+ax.grid(which='minor', color='#DDDDDD', linewidth=0.5)
+ax.minorticks_on()
+
+ax.set_xlim(ts[0][0], 50)
+plt.tight_layout()
+ax.set_xscale('linear')
+
+plt.savefig(os.path.join(outpath, "8__havok-reconstruction-disjoint.png"))
+plt.clf()
 
 
 
