@@ -278,8 +278,8 @@ for gp, df in gdf:
 # ns_control = range(1,26)
 
 
-n_embeddings = range(30, n_emb_max + 10, 10)
-rs_model = range(3,26)
+n_embeddings = range(10, n_emb_max + 10, 10)
+rs_model = range(2,26)
 ns_control = range(1,11)
 
 
@@ -305,7 +305,7 @@ date_time_test = date_times[-1]
 eval_res = []
 
 i = 0
-for params in tqdm(valid_params):
+for params in tqdm(valid_params, desc="Processing..."):
     n_embedding, r_model, n_control = params
 
     # n_embedding, r_model, n_control = (30, 6, 5)
@@ -337,6 +337,23 @@ for params in tqdm(valid_params):
     rmse_test = np.sqrt(np.mean(z_pred_test - z_x_test)**2)
     mae_test = np.mean(np.abs(z_pred_test - z_x_test))
 
+    # do the same, but for only (upt to) the first three hours of integration
+    k_3hr = int(3 * 60 / (ts_x[0][1] - ts_x[0][0]))
+    rmse_train_3hr = [np.sqrt(np.mean(zs_pred[i][:min(k_3hr, len(zs_x[i]))] - zs_x[i][:min(k_3hr, len(zs_x[i]))] )**2) for i in range(len(zs_x))]
+    mae_train_3hr = [np.mean(np.abs(zs_pred[i][:min(k_3hr, len(zs_x[i]))] - zs_x[i][:min(k_3hr, len(zs_x[i]))])) for i in range(len(zs_x))]
+
+    
+    k_6hr = int(6 * 60 / (ts_x[0][1] - ts_x[0][0]))
+    rmse_train_6hr = [np.sqrt(np.mean(zs_pred[i][:min(k_6hr, len(zs_x[i]))] - zs_x[i][:min(k_6hr, len(zs_x[i]))] )**2) for i in range(len(zs_x))]
+    mae_train_6hr = [np.mean(np.abs(zs_pred[i][:min(k_6hr, len(zs_x[i]))] - zs_x[i][:min(k_6hr, len(zs_x[i]))])) for i in range(len(zs_x))]
+
+
+    k_12hr = int(6 * 60 / (ts_x[0][1] - ts_x[0][0]))
+    rmse_train_12hr = [np.sqrt(np.mean(zs_pred[i][:min(k_12hr, len(zs_x[i]))] - zs_x[i][:min(k_12hr, len(zs_x[i]))] )**2) for i in range(len(zs_x))]
+    mae_train_12hr = [np.mean(np.abs(zs_pred[i][:min(k_12hr, len(zs_x[i]))] - zs_x[i][:min(k_12hr, len(zs_x[i]))])) for i in range(len(zs_x))]
+
+
+
     res_dict = {}
     res_dict['n_embedding'] = n_embedding
     res_dict['r_model'] = r_model
@@ -346,6 +363,15 @@ for params in tqdm(valid_params):
     res_dict['mae_train_mean'] = np.mean(mae_train)
     res_dict['mae_train_std'] = np.std(mae_train)
 
+    res_dict['rmse_train_3hr'] = np.mean(rmse_train_3hr)
+    res_dict['mae_train_3hr'] = np.mean(mae_train_3hr)
+
+    res_dict['rmse_train_6hr'] = np.mean(rmse_train_6hr)
+    res_dict['mae_train_6hr'] = np.mean(mae_train_6hr)
+
+    res_dict['rmse_train_12hr'] = np.mean(rmse_train_12hr)
+    res_dict['mae_train_12hr'] = np.mean(mae_train_12hr)
+
     res_dict['rmse_test'] = rmse_test
     res_dict['mae_test'] = mae_test
 
@@ -354,9 +380,11 @@ for params in tqdm(valid_params):
     if i % 100 == 0: 
         # save the dataframe        
         df_res = pd.DataFrame(eval_res)
-        df_res = df_res.sort_values(by="rmse_train_mean", ascending=True)
+        df_res = df_res = df_res.sort_values(by="rmse_train_3hr", ascending=True)
         df_res.to_csv(os.path.join(outpath, "param_sweep.csv"))
 
+        current_best = df_res.iloc[0].to_dict()
+        tqdm.write("{0}, {1}, {2}, {3:.3f}, {4:.3f}\t{5}, {6}, {7}".format(int(current_best['n_embedding']), int(current_best['r_model']), int(current_best['n_control']), current_best['rmse_train_3hr'], current_best['rmse_train_6hr'], n_embedding, r_model, n_control))
 
     i += 1
 
